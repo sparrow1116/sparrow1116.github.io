@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+  <link rel="stylesheet" type="text/css" href="pubsub.css"/>
+</head>
+<body>
+    <pre>
+      //对于DOM事件的订阅和发布，用jQuery实现起来是非常简单的，接下来我们就是用Jquery比如下面：
+      function DataBinder( object_id ) {
+          //此对象将会绑定所有的JavaScript的数据对象，和Dom对象。
+          //当Dom对象改变，通知此对象，此对象通知数据对象改变。
+          //当数据对象改变，通知此对象，此对象通知Dom对象改变。
+          //此对象起到中介的作用。
+          var pubSub = $({});
+
+          //生成事件id和事件名
+          var data_attr = "bind-" + object_id,
+          message = object_id + ":change";
+
+          //绑定Dom对象，pubSub对象收到Dom对象改变的消息后，触发自身的message事件。
+          $( document ).on( "change", "[data-" + data_attr + "]", function( evt ) {
+              var $input = $( this );
+              pubSub.trigger( message, [ $input.data( data_attr ), $input.val() ] );
+          });
+
+          // PubSub对象收到message事件，修改Dom对象。
+          pubSub.on( message, function( evt, prop_name, new_val ) {
+              $( "[data-" + data_attr + "=" + prop_name + "]" ).each( function() {
+                  var $bound = $( this );
+
+                  if ( $bound.is("input, textarea, select") ) {
+                      $bound.val( new_val );
+                  } else {
+                      $bound.html( new_val );
+                  }
+              });
+          });
+
+          return pubSub;
+      }
+      //对于上面这个实现来说，下面是一个User模型的最简单的实现方法：
+      function User( uid ) {
+          var binder = new DataBinder( uid ),
+              user = {
+                  attributes: {},
+            //绑定Javascript对象，pubSub对象收到Dom对象改变的消息后，触发自身的message事件。
+                  set: function( attr_name, val ) {
+                      this.attributes[ attr_name ] = val;
+                      binder.trigger( uid + ":change", [ attr_name, val, this ] );
+                  },
+                  get: function( attr_name ) {
+                      return this.attributes[ attr_name ];
+                  },
+                  _binder: binder
+              };
+          //PubSub对象收到message事件，修改Javascript对象的值。
+          binder.on( uid + ":change", function( evt, attr_name, new_val, initiator ) {
+              if ( initiator !== user ) {
+                  user.set( attr_name, new_val );
+              }
+          });
+          return user;
+      }
+        // javascript
+        var user = new User( 123 );
+        user.set( "name", "Wolfgang" );
+    </pre>
+</body>
+</html>
